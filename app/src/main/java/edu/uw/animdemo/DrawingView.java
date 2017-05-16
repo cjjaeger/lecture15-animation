@@ -8,6 +8,8 @@ import android.graphics.Paint;
 import android.util.AttributeSet;
 import android.view.View;
 
+import java.util.HashMap;
+
 /**
  * A basic custom view for drawing on.
  * @author Joel Ross
@@ -20,7 +22,7 @@ public class DrawingView extends View {
     private int viewWidth, viewHeight; //size of the view
 
     private Bitmap bmp; //image to draw on
-
+    private HashMap<Integer, Ball> touches;
     //drawing values
     private Paint whitePaint; //drawing variables (pre-defined for speed)
 
@@ -35,11 +37,13 @@ public class DrawingView extends View {
     }
 
     public DrawingView(Context context, AttributeSet attrs) {
+
         this(context, attrs, 0);
     }
 
     public DrawingView(Context context, AttributeSet attrs, int defaultStyle) {
         super(context, attrs, defaultStyle);
+        touches = new HashMap<Integer, Ball>();
 
         viewWidth = 1; viewHeight = 1; //positive defaults; will be replaced when #onSizeChanged() is called
 
@@ -49,6 +53,13 @@ public class DrawingView extends View {
 
     }
 
+    public synchronized void addTouch(int pointerID, float x, float y){
+        Ball ballNew = new Ball(x,y,50);
+        touches.put(pointerID, ballNew);
+    }
+    public synchronized void removeTouch(int pointerID){
+        touches.remove(pointerID);
+    }
     /**
      * Override method that is called when the size of the display is specified (or changes
      * due to rotation).
@@ -64,6 +75,8 @@ public class DrawingView extends View {
         bmp = Bitmap.createBitmap(viewWidth, viewHeight, Bitmap.Config.ARGB_8888);
 
         ball = new Ball(viewWidth/2, viewHeight/2, 100);
+//        ball.dx = 10;
+//        ball.dy = 15;
 
     }
 
@@ -84,17 +97,43 @@ public class DrawingView extends View {
     {
         super.onDraw(canvas); //make sure to have the parent do any drawing it is supposed to!
 
-
+        ball.dx *= 0.99;
+        ball.dy *= 0.99;
+        ball.cx += ball.dx;
+        ball.cy += ball.dy;
+        if(ball.cx + ball.radius > viewWidth) { //left bound
+            ball.cx = viewWidth - ball.radius;
+            ball.dx *= -1;
+        }
+        else if(ball.cx - ball.radius < 0) { //right bound
+            ball.cx = ball.radius;
+            ball.dx *= -1;
+        }
+        else if(ball.cy + ball.radius > viewHeight) { //bottom bound
+            ball.cy = viewHeight - ball.radius;
+            ball.dy *= -1;
+        }
+        else if(ball.cy - ball.radius < 0) { //top bound
+            ball.cy = ball.radius;
+            ball.dy *= -1;
+        }
         canvas.drawColor(Color.rgb(51,10,111)); //purple out the background
 
         canvas.drawCircle(ball.cx, ball.cy, ball.radius, whitePaint); //we can draw directly onto the canvas
 
-        for(int x=50; x<viewWidth-50; x++) { //most of the width
-            for(int y=100; y<110; y++) { //10 pixels high
-                bmp.setPixel(x, y, Color.YELLOW); //we can also set individual pixels in a Bitmap (like a BufferedImage)
-            }
-        }
-        canvas.drawBitmap(bmp, 0, 0, null); //and then draw the BitMap onto the canvas.
+//        for(int x=50; x<viewWidth-50; x++) { //most of the width
+//            for(int y=100; y<110; y++) { //10 pixels high
+//                bmp.setPixel(x, y, Color.YELLOW); //we can also set individual pixels in a Bitmap (like a BufferedImage)
+//            }
+//        }
+//        canvas.drawBitmap(bmp, 0, 0, null); //and then draw the BitMap onto the canvas.
         //Canvas bmc = new Canvas(bmp); //we can also make a canvas out of a Bitmap to draw on that (like fetching g2d from a BufferedImage) if we don't want to double-buffer
+
+        Object[] iter = touches.values().toArray();
+        for (int i = 0 ; i < iter.length ; i++){
+            Ball ballNew = (Ball)iter[i];
+            canvas.drawCircle(ballNew.cx, ballNew.cy, ballNew.radius, whitePaint); //we can draw directly onto the canvas
+        }
+        invalidate();
     }
 }
